@@ -2,10 +2,14 @@
 #define _VDEV_RAIDZ_H
 
 #include <stdint.h>
+#include <assert.h>
 
 #define VDEV_RAIDZ_P        0
 #define VDEV_RAIDZ_Q        1
 #define VDEV_RAIDZ_R        2
+
+#define ASSERT assert
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
 
 typedef struct raidz_col {
     uint64_t rc_devidx;     /* child device index for I/O */
@@ -34,5 +38,9 @@ typedef struct raidz_map {
     uint8_t rm_ecksuminjected;  /* checksum error was injected */
     raidz_col_t rm_col[1];      /* Flexible array of I/O columns */
 } raidz_map_t;
+
+void vdev_raidz_generate_parity_p(raidz_map_t *rm);
+
+int vdev_raidz_reconstruct_p(raidz_map_t *rm, int *tgts, int ntgts);
 
 #endif
