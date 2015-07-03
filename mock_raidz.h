@@ -8,5 +8,6 @@
 
 raidz_col_t make_col(size_t col_entries);
 raidz_map_t *make_map(size_t num_cols, size_t *sizes, int type);
+void raidz_map_free(raidz_map_t *map);
 
 #endif

@@ -28,3 +28,11 @@ raidz_col_t make_col(size_t num_entries)
     fclose(random);
     return col;
 }
+
+void raidz_map_free(raidz_map_t *map)
+{
+    for(int i = 0; i < map->rm_cols; i++) {
+        free(map->rm_col[i].rc_data);
+    }
+    free(map);
+}

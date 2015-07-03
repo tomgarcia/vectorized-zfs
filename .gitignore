@@ -1,3 +1,4 @@
 *swp
 test
 *.o
+gmon.out

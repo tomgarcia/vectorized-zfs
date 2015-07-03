@@ -1,4 +1,5 @@
-CFLAGS = -Wall -g
+CFLAGS = -Wall -g -pg
+LDFLAGS = -pg
 
 all: test
 
