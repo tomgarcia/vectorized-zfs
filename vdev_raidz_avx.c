@@ -71,8 +71,22 @@ vdev_raidz_reconstruct_p_avx(raidz_map_t *rm, int *tgts, int ntgts)
 
     src = rm->rm_col[VDEV_RAIDZ_P].rc_data;
     dst = rm->rm_col[x].rc_data;
-    for (i = 0; i < xcount; i++, dst++, src++) {
-        *dst = *src;
+    for (i = 0; i < xcount / 4; i++, src+=4, dst+=4) {
+        asm("VMOVDQU %1, %%ymm0\n"
+            "VMOVDQU %%ymm0, %0"
+            : "=m" (*dst)
+            : "m" (*src)
+            : "ymm0");
+    }
+    int remainder = xcount % 4;
+    if (remainder != 0) {
+        src -= (4 - remainder);
+        dst -= (4 - remainder);
+        asm("VMOVDQU %1, %%ymm0\n"
+            "VMOVDQU %%ymm0, %0"
+            : "=m" (*dst)
+            : "m" (*src)
+            : "ymm0");
     }
 
     for (c = rm->rm_firstdatacol; c < rm->rm_cols; c++) {
@@ -85,7 +99,17 @@ vdev_raidz_reconstruct_p_avx(raidz_map_t *rm, int *tgts, int ntgts)
         ccount = rm->rm_col[c].rc_size / sizeof (src[0]);
         count = MIN(ccount, xcount);
 
-        for (i = 0; i < count; i++, dst++, src++) {
+        for (i = 0; i < count / 4; i++, src+=4, dst+=4) {
+            asm("VMOVDQU %0, %%ymm0\n"
+                "VMOVDQU %1, %%ymm1\n"
+                "VXORPS %%ymm1, %%ymm0, %%ymm0\n"
+                "VMOVDQU %%ymm0, %0"
+                : "+m" (*dst)
+                : "m" (*src)
+                : "ymm0", "ymm1");
+        }
+        int remainder = count % 4;
+        for(i = 0; i < remainder; i++, dst++, src++) {
             *dst ^= *src;
         }
     }

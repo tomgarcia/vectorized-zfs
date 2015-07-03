@@ -8,16 +8,19 @@
 #include "vdev_raidz.h"
 #include "mock_raidz.h"
 
-#define TEST_PRINT(s) if (!is_profiling) { \
-                           puts((s));\
+#define TEST_PRINT(s...) if (!is_profiling) { \
+                           printf(s);\
                        }
 
 static char is_profiling = 1;
 
-typedef void (*generator)(raidz_map_t *rm);
-typedef int (*reconstructor)(raidz_map_t *rm, int *tgts, int ntgts);
+typedef struct {
+    char *name;
+    void (*generate)(raidz_map_t *rm);
+    int (*reconstruct)(raidz_map_t *rm, int *tgts, int ntgts);
+} parity;
 
-void test_parity(generator g, reconstructor r, raidz_map_t *map);
+void test_parity(parity p, raidz_map_t *map);
 
 int main(int argc, char **argv)
 {
@@ -28,6 +31,13 @@ int main(int argc, char **argv)
     if (seconds == 0) {
         is_profiling = 0;
     }
+    parity avx = {"RAID-Z1 AVX",
+                  vdev_raidz_generate_parity_p_avx,
+                  vdev_raidz_reconstruct_p_avx};
+    parity standard = {"RAID-Z1 Standard",
+                       vdev_raidz_generate_parity_p,
+                       vdev_raidz_reconstruct_p};
+    parity parities[] = {standard, avx};
     time_t start = time(NULL);
     do {
         // All columns must be <= the first column
@@ -37,31 +47,27 @@ int main(int argc, char **argv)
         size_t num_cols = sizeof(sizes) / sizeof(size_t);
         raidz_map_t *map = make_map(num_cols, sizes, type);
 
-        TEST_PRINT("Testing standard RAID-Z1");
-        test_parity(vdev_raidz_generate_parity_p,
-                    vdev_raidz_reconstruct_p,
-                    map);
-        TEST_PRINT("Standard RAID-Z1 works!");
-        TEST_PRINT("Testing AVX RAID-Z1");
-        test_parity(vdev_raidz_generate_parity_p_avx,
-                    vdev_raidz_reconstruct_p_avx,
-                    map);
-        TEST_PRINT("AVX RAID-Z1 works!");
+        for(int i = 0; i < sizeof(parities) / sizeof(parity); i++) {
+            parity p = parities[i];
+            TEST_PRINT("Testing %s\n", p.name);
+            test_parity(p, map);
+            TEST_PRINT("%s works!\n", p.name);
+        }
         raidz_map_free(map);
     } while (difftime(time(NULL), start) < seconds);
     return 0;
 }
 
-void test_parity(generator g, reconstructor r, raidz_map_t *map)
+void test_parity(parity p, raidz_map_t *map)
 {
-    g(map);
+    p.generate(map);
     for(int i = map->rm_firstdatacol; i < map->rm_cols; i++) {
         raidz_col_t col = map->rm_col[i];
         uint64_t *copy = malloc(col.rc_size);
         memcpy(copy, col.rc_data, col.rc_size);
         memset(col.rc_data, 0, col.rc_size);
         int targets[] = {i};
-        r(map, targets, 1);
+        p.reconstruct(map, targets, 1);
         for(int j = 0; j < col.rc_size / sizeof(uint64_t); j++) {
             assert(copy[j] == ((uint64_t*)col.rc_data)[j]);
         }
