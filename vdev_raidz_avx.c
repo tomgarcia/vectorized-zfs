@@ -47,16 +47,8 @@ vdev_raidz_generate_parity_p_avx(raidz_map_t *rm)
                     : "ymm0", "ymm1");
             }
             int remainder = ccount % 4;
-            if (remainder != 0) {
-                src -= (4 - remainder);
-                p -= (4 - remainder);
-                asm("VMOVDQU %0, %%ymm0\n"
-                    "VMOVDQU %1, %%ymm1\n"
-                    "VXORPS %%ymm1, %%ymm0, %%ymm0\n"
-                    "VMOVDQU %%ymm0, %0"
-                    : "+m" (*p)
-                    : "m" (*src)
-                    : "ymm0", "ymm1");
+            for(i = 0; i < remainder; i++, p++, src++) {
+                *p ^= *src;
             }
         }
     }
