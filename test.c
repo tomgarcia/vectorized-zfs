@@ -15,10 +15,10 @@ int main()
 {
     // All columns must be <= the first column
     // (ask ZFS maintainers why)
-    uint64_t test[] = {5, 3, 2, 5};
-    uint64_t test2[] = {1, 4, 2, 1};
-    uint64_t test3[] = {2, 200, 5, 6};
-    size_t sizes[] = {4, 4, 4};
+    uint64_t test[] = {400, 5, 3, 2, 5, 6, 5, 2, 1};
+    uint64_t test2[] = {1, 4, 2, 1, 8, 3, 6, 9};
+    uint64_t test3[] = {2, 200, 5, 6, 400, 37, 29, 606};
+    size_t sizes[] = {9, 8, 8};
     uint64_t *input[] = {test, test2, test3};
     int type = VDEV_RAIDZ_P;
     size_t num_cols = sizeof(input) / sizeof(uint64_t*);

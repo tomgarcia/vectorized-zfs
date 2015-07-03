@@ -18,7 +18,17 @@ vdev_raidz_generate_parity_p_avx(raidz_map_t *rm)
 
         if (c == rm->rm_firstdatacol) {
             ASSERT(ccount == pcount);
-            for (i = 0; i < ccount; i+=4, src+=4, p+=4) {
+            for (i = 0; i < ccount / 4; i++, src+=4, p+=4) {
+                asm("VMOVDQU %1, %%ymm0\n"
+                    "VMOVDQU %%ymm0, %0"
+                    : "=m" (*p)
+                    : "m" (*src)
+                    : "ymm0");
+            }
+            int remainder = ccount % 4;
+            if (remainder != 0) {
+                src -= (4 - remainder);
+                p -= (4 - remainder);
                 asm("VMOVDQU %1, %%ymm0\n"
                     "VMOVDQU %%ymm0, %0"
                     : "=m" (*p)
@@ -27,7 +37,19 @@ vdev_raidz_generate_parity_p_avx(raidz_map_t *rm)
             }
         } else {
             ASSERT(ccount <= pcount);
-            for (i = 0; i < ccount; i+=4, src+=4, p+=4) {
+            for (i = 0; i < ccount / 4; i++, src+=4, p+=4) {
+                asm("VMOVDQU %0, %%ymm0\n"
+                    "VMOVDQU %1, %%ymm1\n"
+                    "VXORPS %%ymm1, %%ymm0, %%ymm0\n"
+                    "VMOVDQU %%ymm0, %0"
+                    : "+m" (*p)
+                    : "m" (*src)
+                    : "ymm0", "ymm1");
+            }
+            int remainder = ccount % 4;
+            if (remainder != 0) {
+                src -= (4 - remainder);
+                p -= (4 - remainder);
                 asm("VMOVDQU %0, %%ymm0\n"
                     "VMOVDQU %1, %%ymm1\n"
                     "VXORPS %%ymm1, %%ymm0, %%ymm0\n"
