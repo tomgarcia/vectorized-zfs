@@ -15,10 +15,10 @@ int main()
 {
     // All columns must be <= the first column
     // (ask ZFS maintainers why)
-    uint64_t test[] = {5, 3, 2, 5, 1, 47};
-    uint64_t test2[] = {35, 4, 2, 1};
-    uint64_t test3[] = {100, 4, 2, 1};
-    size_t sizes[] = {6, 4, 4};
+    uint64_t test[] = {5, 3, 2, 5};
+    uint64_t test2[] = {1, 4, 2, 1};
+    uint64_t test3[] = {2, 200, 5, 6};
+    size_t sizes[] = {4, 4, 4};
     uint64_t *input[] = {test, test2, test3};
     int type = VDEV_RAIDZ_P;
     size_t num_cols = sizeof(input) / sizeof(uint64_t*);
@@ -36,6 +36,9 @@ int main()
 
     test_parity(vdev_raidz_generate_parity_p,
                 vdev_raidz_reconstruct_p,
+                map);
+    test_parity(vdev_raidz_generate_parity_p_avx,
+                vdev_raidz_reconstruct_p_avx,
                 map);
     return 0;
 }
