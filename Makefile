@@ -1,5 +1,5 @@
-CFLAGS = -Wall -g -pg -mavx
-LDFLAGS = -pg
+CFLAGS = -Wall -g -pg -mavx -Ofast
+LDFLAGS = 
 
 all: test
 

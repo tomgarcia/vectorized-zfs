@@ -13,8 +13,10 @@ raidz_map_t *make_map(size_t num_cols, size_t *sizes, int type)
     for(int i = map->rm_firstdatacol; i < map->rm_cols; i++) {
         map->rm_col[i] = make_col(sizes[i - map->rm_firstdatacol]);
     }
-    map->rm_col[VDEV_RAIDZ_P].rc_size = map->rm_col[map->rm_firstdatacol].rc_size;
-    map->rm_col[VDEV_RAIDZ_P].rc_data = malloc(map->rm_col[VDEV_RAIDZ_P].rc_size);
+    for(int i = 0; i < map->rm_firstdatacol; i++) {
+        map->rm_col[i].rc_size = map->rm_col[map->rm_firstdatacol].rc_size;
+        map->rm_col[i].rc_data = malloc(map->rm_col[i].rc_size);
+    }
     return map;
 }
 

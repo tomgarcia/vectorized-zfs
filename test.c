@@ -20,7 +20,8 @@ typedef struct {
     int (*reconstruct)(raidz_map_t *rm, int *tgts, int ntgts);
 } parity;
 
-void test_parity(parity p, raidz_map_t *map);
+void test_parity_p(parity p, raidz_map_t *map);
+void test_parity_pq(parity p, raidz_map_t *map);
 
 int main(int argc, char **argv)
 {
@@ -40,20 +41,23 @@ int main(int argc, char **argv)
     parity standard = {"RAID-Z1 Standard",
                        vdev_raidz_generate_parity_p,
                        vdev_raidz_reconstruct_p};
-    parity parities[] = {standard, avx, avx2};
+    parity standard_pq = {"RAID-Z2 Standard",
+                       vdev_raidz_generate_parity_pq,
+                       vdev_raidz_reconstruct_pq};
+    parity parities[] = {standard_pq};
     time_t start = time(NULL);
     do {
         // All columns must be <= the first column
         // (ask ZFS maintainers why)
         size_t sizes[] = {1003, 1002, 1001, 1000};
-        int type = VDEV_RAIDZ_P;
+        int type = VDEV_RAIDZ_Q;
         size_t num_cols = sizeof(sizes) / sizeof(size_t);
         raidz_map_t *map = make_map(num_cols, sizes, type);
 
         for(int i = 0; i < sizeof(parities) / sizeof(parity); i++) {
             parity p = parities[i];
             TEST_PRINT("Testing %s\n", p.name);
-            test_parity(p, map);
+            test_parity_pq(p, map);
             TEST_PRINT("%s works!\n", p.name);
         }
         raidz_map_free(map);
@@ -61,7 +65,7 @@ int main(int argc, char **argv)
     return 0;
 }
 
-void test_parity(parity p, raidz_map_t *map)
+void test_parity_p(parity p, raidz_map_t *map)
 {
     p.generate(map);
     for(int i = map->rm_firstdatacol; i < map->rm_cols; i++) {
@@ -75,5 +79,32 @@ void test_parity(parity p, raidz_map_t *map)
             assert(copy[j] == ((uint64_t*)col.rc_data)[j]);
         }
         free(copy);
+    }
+}
+
+void test_parity_pq(parity p, raidz_map_t *map)
+{
+    p.generate(map);
+    for(int i = map->rm_firstdatacol; i < map->rm_cols; i++) {
+        for(int j = map->rm_firstdatacol; j < i; j++) {
+            raidz_col_t col1 = map->rm_col[i];
+            uint64_t *copy1 = malloc(col1.rc_size);
+            memcpy(copy1, col1.rc_data, col1.rc_size);
+            memset(col1.rc_data, 0, col1.rc_size);
+            raidz_col_t col2 = map->rm_col[j];
+            uint64_t *copy2 = malloc(col2.rc_size);
+            memcpy(copy2, col2.rc_data, col2.rc_size);
+            memset(col2.rc_data, 0, col2.rc_size);
+            int targets[] = {j, i};
+            p.reconstruct(map, targets, 2);
+            for(int k = 0; k < col1.rc_size / sizeof(uint64_t); k++) {
+                assert(copy1[k] == ((uint64_t*)col1.rc_data)[k]);
+            }
+            for(int k = 0; k < col2.rc_size / sizeof(uint64_t); k++) {
+                assert(copy2[k] == ((uint64_t*)col2.rc_data)[k]);
+            }
+            free(copy1);
+            free(copy2);
+        }
     }
 }
