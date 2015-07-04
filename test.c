@@ -42,7 +42,7 @@ int main(int argc, char **argv)
     do {
         // All columns must be <= the first column
         // (ask ZFS maintainers why)
-        size_t sizes[] = {1000, 1000, 1000};
+        size_t sizes[] = {1002, 1001, 999, 998, 1000};
         int type = VDEV_RAIDZ_P;
         size_t num_cols = sizeof(sizes) / sizeof(size_t);
         raidz_map_t *map = make_map(num_cols, sizes, type);

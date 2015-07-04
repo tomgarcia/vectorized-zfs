@@ -26,14 +26,8 @@ vdev_raidz_generate_parity_p_avx(raidz_map_t *rm)
                     : "ymm0");
             }
             int remainder = ccount % 4;
-            if (remainder != 0) {
-                src -= (4 - remainder);
-                p -= (4 - remainder);
-                asm("VMOVDQU %1, %%ymm0\n"
-                    "VMOVDQU %%ymm0, %0"
-                    : "=m" (*p)
-                    : "m" (*src)
-                    : "ymm0");
+            for(i = 0; i < remainder; i++, p++, src++) {
+                *p = *src;
             }
         } else {
             ASSERT(ccount <= pcount);
@@ -79,15 +73,9 @@ vdev_raidz_reconstruct_p_avx(raidz_map_t *rm, int *tgts, int ntgts)
             : "ymm0");
     }
     int remainder = xcount % 4;
-    if (remainder != 0) {
-        src -= (4 - remainder);
-        dst -= (4 - remainder);
-        asm("VMOVDQU %1, %%ymm0\n"
-            "VMOVDQU %%ymm0, %0"
-            : "=m" (*dst)
-            : "m" (*src)
-            : "ymm0");
-    }
+        for(i = 0; i < remainder; i++, dst++, src++) {
+            *dst = *src;
+        }
 
     for (c = rm->rm_firstdatacol; c < rm->rm_cols; c++) {
         src = rm->rm_col[c].rc_data;

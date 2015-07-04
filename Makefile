@@ -1,10 +1,10 @@
-CFLAGS = -Wall -g -pg
+CFLAGS = -Wall -g -pg -mavx
 LDFLAGS = -pg
 
 all: test
 
 test: test.o vdev_raidz.o mock_raidz.o vdev_raidz_avx.o
-	gcc $(LDFLAGS) test.o vdev_raidz.o mock_raidz.o vdev_raidz_avx.o -o test
+	gcc $(CFLAGS) $(LDFLAGS) test.o vdev_raidz.o mock_raidz.o vdev_raidz_avx.o -o test
 
 test.o: test.c vdev_raidz.h mock_raidz.h
 	gcc $(CFLAGS) -c test.c
