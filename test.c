@@ -31,18 +31,21 @@ int main(int argc, char **argv)
     if (seconds == 0) {
         is_profiling = 0;
     }
+    parity avx2 = {"RAID-Z1 AVX-V2",
+                  vdev_raidz_generate_parity_p_avx_v2,
+                  vdev_raidz_reconstruct_p_avx_v2};
     parity avx = {"RAID-Z1 AVX",
                   vdev_raidz_generate_parity_p_avx,
                   vdev_raidz_reconstruct_p_avx};
     parity standard = {"RAID-Z1 Standard",
                        vdev_raidz_generate_parity_p,
                        vdev_raidz_reconstruct_p};
-    parity parities[] = {standard, avx};
+    parity parities[] = {standard, avx, avx2};
     time_t start = time(NULL);
     do {
         // All columns must be <= the first column
         // (ask ZFS maintainers why)
-        size_t sizes[] = {1002, 1001, 999, 998, 1000};
+        size_t sizes[] = {1003, 1002, 1001, 1000};
         int type = VDEV_RAIDZ_P;
         size_t num_cols = sizeof(sizes) / sizeof(size_t);
         raidz_map_t *map = make_map(num_cols, sizes, type);
