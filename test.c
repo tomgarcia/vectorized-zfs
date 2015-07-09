@@ -26,15 +26,15 @@ void test_parity_pq(parity p, raidz_map_t *map);
 int main(int argc, char **argv)
 {
     int seconds = 0;
-    if (argc > 1) {
-        seconds = atoi(argv[1]);
+    size_t num_cols = argc - 2;
+    size_t *sizes = malloc(sizeof(size_t) * num_cols);
+    for (int i = 1; i < argc - 1; i++) {
+        sizes[i-1] = atoi(argv[i]);
     }
+    seconds = atoi(argv[argc-1]);
     if (seconds == 0) {
         is_profiling = 0;
     }
-    parity avx2 = {"RAID-Z1 AVX-V2",
-                  vdev_raidz_generate_parity_p_avx_v2,
-                  vdev_raidz_reconstruct_p_avx_v2};
     parity avx = {"RAID-Z1 AVX",
                   vdev_raidz_generate_parity_p_avx,
                   vdev_raidz_reconstruct_p_avx};
@@ -44,14 +44,16 @@ int main(int argc, char **argv)
     parity standard_pq = {"RAID-Z2 Standard",
                        vdev_raidz_generate_parity_pq,
                        vdev_raidz_reconstruct_pq};
-    parity parities[] = {standard_pq};
+    parity avx_pq = {"RAID-Z2 AVX",
+                       vdev_raidz_generate_parity_pq_avx,
+                       vdev_raidz_reconstruct_pq_avx};
+
+    parity parities[] = {standard_pq, avx_pq};
+    int type = VDEV_RAIDZ_Q;
     time_t start = time(NULL);
     do {
         // All columns must be <= the first column
         // (ask ZFS maintainers why)
-        size_t sizes[] = {1003, 1002, 1001, 1000};
-        int type = VDEV_RAIDZ_Q;
-        size_t num_cols = sizeof(sizes) / sizeof(size_t);
         raidz_map_t *map = make_map(num_cols, sizes, type);
 
         for(int i = 0; i < sizeof(parities) / sizeof(parity); i++) {
