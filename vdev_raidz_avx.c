@@ -20,10 +20,10 @@ vdev_raidz_generate_parity_p_avx(raidz_map_t *rm)
         if (c == rm->rm_firstdatacol) {
             ASSERT(ccount == pcount);
             for (i = 0; i < ccount / 4; i++, src+=4, p+=4) {
-                asm("VMOVDQU %1, %%ymm0\n"
-                    "VMOVDQU %%ymm0, %0"
-                    : "=m" (*p)
-                    : "m" (*src)
+                asm("VMOVDQU %[src], %%ymm0\n"
+                    "VMOVDQU %%ymm0, %[p]"
+                    : [p] "=m" (*p)
+                    : [src] "m" (*src)
                     : "ymm0");
             }
             int remainder = ccount % 4;
@@ -33,12 +33,12 @@ vdev_raidz_generate_parity_p_avx(raidz_map_t *rm)
         } else {
             ASSERT(ccount <= pcount);
             for (i = 0; i < ccount / 4; i++, src+=4, p+=4) {
-                asm("VMOVDQU %0, %%ymm0\n"
-                    "VMOVDQU %1, %%ymm1\n"
+                asm("VMOVDQU %[p], %%ymm0\n"
+                    "VMOVDQU %[src], %%ymm1\n"
                     "VXORPS %%ymm1, %%ymm0, %%ymm0\n"
-                    "VMOVDQU %%ymm0, %0"
-                    : "+m" (*p)
-                    : "m" (*src)
+                    "VMOVDQU %%ymm0, %[p]"
+                    : [p] "+m" (*p)
+                    : [src] "m" (*src)
                     : "ymm0", "ymm1");
             }
             int remainder = ccount % 4;
@@ -67,10 +67,10 @@ vdev_raidz_reconstruct_p_avx(raidz_map_t *rm, int *tgts, int ntgts)
     src = rm->rm_col[VDEV_RAIDZ_P].rc_data;
     dst = rm->rm_col[x].rc_data;
     for (i = 0; i < xcount / 4; i++, src+=4, dst+=4) {
-        asm("VMOVDQU %1, %%ymm0\n"
-            "VMOVDQU %%ymm0, %0"
-            : "=m" (*dst)
-            : "m" (*src)
+        asm("VMOVDQU %[src], %%ymm0\n"
+            "VMOVDQU %%ymm0, %[dst]"
+            : [dst] "=m" (*dst)
+            : [src] "m" (*src)
             : "ymm0");
     }
     int remainder = xcount % 4;
@@ -89,12 +89,12 @@ vdev_raidz_reconstruct_p_avx(raidz_map_t *rm, int *tgts, int ntgts)
         count = MIN(ccount, xcount);
 
         for (i = 0; i < count / 4; i++, src+=4, dst+=4) {
-            asm("VMOVDQU %0, %%ymm0\n"
-                "VMOVDQU %1, %%ymm1\n"
+            asm("VMOVDQU %[dst], %%ymm0\n"
+                "VMOVDQU %[src], %%ymm1\n"
                 "VXORPS %%ymm1, %%ymm0, %%ymm0\n"
-                "VMOVDQU %%ymm0, %0"
-                : "+m" (*dst)
-                : "m" (*src)
+                "VMOVDQU %%ymm0, %[dst]"
+                : [dst] "+m" (*dst)
+                : [src] "m" (*src)
                 : "ymm0", "ymm1");
         }
         int remainder = count % 4;
@@ -126,11 +126,11 @@ vdev_raidz_generate_parity_pq_avx(raidz_map_t *rm)
         if (c == rm->rm_firstdatacol) {
             ASSERT(ccnt == pcnt || ccnt == 0);
             for (i = 0; i < ccnt / 4; i++, src+=4, p+=4, q+=4) {
-                asm("VMOVDQU %2, %%ymm0\n"
-                    "VMOVDQU %%ymm0, %0\n"
-                    "VMOVDQU %%ymm0, %1"
-                    : "=m" (*p), "=m" (*q)
-                    : "m" (*src)
+                asm("VMOVDQU %[src], %%ymm0\n"
+                    "VMOVDQU %%ymm0, %[p]\n"
+                    "VMOVDQU %%ymm0, %[q]"
+                    : [p] "=m" (*p), [q] "=m" (*q)
+                    : [src] "m" (*src)
                     : "ymm0");
             }
             int remainder = ccnt % 4;
@@ -140,9 +140,9 @@ vdev_raidz_generate_parity_pq_avx(raidz_map_t *rm)
             }
             for (; i < pcnt / 4; i++, src+=4, p+=4, q+=4) {
                 asm("VXORPS %%ymm0, %%ymm0, %%ymm0\n"
-                    "VMOVDQU %%ymm0, %0\n"
-                    "VMOVDQU %%ymm0, %1"
-                    : "=m" (*p), "=m" (*q)
+                    "VMOVDQU %%ymm0, %[p]\n"
+                    "VMOVDQU %%ymm0, %[q]"
+                    : [p] "=m" (*p), [q] "=m" (*q)
                     :
                     : "ymm0");
             }
