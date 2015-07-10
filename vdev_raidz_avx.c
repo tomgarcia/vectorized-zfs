@@ -146,8 +146,8 @@ vdev_raidz_generate_parity_pq_avx(raidz_map_t *rm)
                     :
                     : "ymm0");
             }
-            remainder = pcnt % 4;
-            for(i = 0; i < remainder; i++, p++, src++, q++) {
+            remainder = (pcnt - ccnt) % 4;
+            for(i = 0; i < remainder; i++, p++, q++) {
                 *p = 0;
                 *q = 0;
             }

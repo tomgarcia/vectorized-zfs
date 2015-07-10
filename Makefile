@@ -1,4 +1,4 @@
-CFLAGS = -Wall -g -pg -mavx
+CFLAGS = -Wall -g -mavx
 LDFLAGS = 
 
 all: test
