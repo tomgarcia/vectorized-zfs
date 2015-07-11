@@ -158,9 +158,35 @@ vdev_raidz_generate_parity_pq_avx(raidz_map_t *rm)
             * Apply the algorithm described above by multiplying
             * the previous result and adding in the new value.
             */
-            for (i = 0; i < ccnt; i++, src++, p++, q++) {
+            for (i = 0; i < ccnt / 4; i++, src+=4, p+=4, q+=4) {
+                asm("VMOVDQU %[p], %%ymm0\n"
+                    "VMOVDQU %[src], %%ymm1\n"
+                    "VMOVDQU %[q], %%ymm2\n"
+                    "VEXTRACTF128 $1, %%ymm2, %%xmm3\n"
+                    "VXORPS %%xmm4, %%xmm4, %%xmm4\n"
+                    "VPCMPGTB %%xmm2, %%xmm4, %%xmm5\n"
+                    "VPCMPGTB %%xmm3, %%xmm4, %%xmm6\n"
+                    "MOVQ $0x1d1d1d1d1d1d1d1d, %%rax\n"
+                    "VPINSRQ $0, %%rax, %%xmm4, %%xmm4\n"
+                    "VPINSRQ $1, %%rax, %%xmm4, %%xmm4\n"
+                    "VPAND %%xmm4, %%xmm5, %%xmm5\n"
+                    "VPAND %%xmm4, %%xmm6, %%xmm6\n"
+                    "VINSERTF128 $1, %%xmm6, %%ymm5, %%ymm5\n"
+                    "VPADDB %%xmm2, %%xmm2, %%xmm2\n"
+                    "VPADDB %%xmm3, %%xmm3, %%xmm3\n"
+                    "VINSERTF128 $1, %%xmm3, %%ymm2, %%ymm2\n"
+                    "VXORPS %%ymm2, %%ymm5, %%ymm2\n"
+                    "VXORPS %%ymm1, %%ymm0, %%ymm0\n"
+                    "VXORPS %%ymm1, %%ymm2, %%ymm2\n"
+                    "VMOVDQU %%ymm0, %[p]\n"
+                    "VMOVDQU %%ymm2, %[q]"
+                    : [p] "+m" (*p), [q] "+m" (*q)
+                    : [src] "m" (*src)
+                    : "rax", "ymm0", "ymm1", "ymm2", "xmm3", "xmm4", "ymm5", "xmm6");
+            }
+            int remainder = ccnt % 4;
+            for(int j = 0; j < remainder; j++, p++, src++, q++) {
                 *p ^= *src;
-
                 VDEV_RAIDZ_64MUL_2(*q, mask);
                 *q ^= *src;
             }
@@ -169,7 +195,7 @@ vdev_raidz_generate_parity_pq_avx(raidz_map_t *rm)
             * Treat short columns as though they are full of 0s.
             * Note that there's therefore nothing needed for P.
             */
-            for (; i < pcnt; i++, q++) {
+            for (i = 0; i < (pcnt - ccnt); i++, q++) {
                 VDEV_RAIDZ_64MUL_2(*q, mask);
             }
         }
@@ -211,7 +237,7 @@ vdev_raidz_reconstruct_pq_avx(raidz_map_t *rm, int *tgts, int ntgts)
     rm->rm_col[x].rc_size = 0;
     rm->rm_col[y].rc_size = 0;
 
-    vdev_raidz_generate_parity_pq(rm);
+    vdev_raidz_generate_parity_pq_avx(rm);
 
     rm->rm_col[x].rc_size = xsize;
     rm->rm_col[y].rc_size = ysize;

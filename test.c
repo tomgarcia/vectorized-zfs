@@ -52,8 +52,6 @@ int main(int argc, char **argv)
     int type = VDEV_RAIDZ_Q;
     time_t start = time(NULL);
     do {
-        // All columns must be <= the first column
-        // (ask ZFS maintainers why)
         raidz_map_t *map = make_map(num_cols, sizes, type);
 
         for(int i = 0; i < sizeof(parities) / sizeof(parity); i++) {

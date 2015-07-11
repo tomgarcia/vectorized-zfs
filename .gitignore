@@ -1,6 +1,12 @@
+# Vi swap files
 *swp
+*swo
+
+# Executable and object files
 test
 *.o
+
+# Profiling Data
 gmon.out
 perf.data
 perf.data.old
