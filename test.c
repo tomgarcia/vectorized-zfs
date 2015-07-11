@@ -25,15 +25,14 @@ void test_parity_pq(parity p, raidz_map_t *map);
 
 int main(int argc, char **argv)
 {
-    int seconds = 0;
-    size_t num_cols = argc - 2;
-    size_t *sizes = malloc(sizeof(size_t) * num_cols);
-    for (int i = 1; i < argc - 1; i++) {
-        sizes[i-1] = atoi(argv[i]);
-    }
-    seconds = atoi(argv[argc-1]);
+    int seconds = atoi(argv[1]);
     if (seconds == 0) {
         is_profiling = 0;
+    }
+    size_t num_cols = argc - 2;
+    size_t *sizes = malloc(sizeof(size_t) * num_cols);
+    for (int i = 2; i < argc; i++) {
+        sizes[i-2] = atoi(argv[i]);
     }
     parity avx = {"RAID-Z1 AVX",
                   vdev_raidz_generate_parity_p_avx,
@@ -48,19 +47,28 @@ int main(int argc, char **argv)
                        vdev_raidz_generate_parity_pq_avx,
                        vdev_raidz_reconstruct_pq_avx};
 
-    parity parities[] = {standard_pq, avx_pq};
-    int type = VDEV_RAIDZ_Q;
+    parity parities_p[] = {standard, avx};
+    parity parities_pq[] = {standard_pq, avx_pq};
     time_t start = time(NULL);
     do {
-        raidz_map_t *map = make_map(num_cols, sizes, type);
+        raidz_map_t *map_p = make_map(num_cols, sizes, VDEV_RAIDZ_P);
+        raidz_map_t *map_pq = make_map(num_cols, sizes, VDEV_RAIDZ_Q);
 
-        for(int i = 0; i < sizeof(parities) / sizeof(parity); i++) {
-            parity p = parities[i];
+        for(int i = 0; i < sizeof(parities_p) / sizeof(parity); i++) {
+            parity p = parities_p[i];
             TEST_PRINT("Testing %s\n", p.name);
-            test_parity_pq(p, map);
+            test_parity_p(p, map_p);
             TEST_PRINT("%s works!\n", p.name);
         }
-        raidz_map_free(map);
+        TEST_PRINT("\n");
+        for(int i = 0; i < sizeof(parities_pq) / sizeof(parity); i++) {
+            parity p = parities_pq[i];
+            TEST_PRINT("Testing %s\n", p.name);
+            test_parity_pq(p, map_pq);
+            TEST_PRINT("%s works!\n", p.name);
+        }
+        raidz_map_free(map_p);
+        raidz_map_free(map_pq);
     } while (difftime(time(NULL), start) < seconds);
     return 0;
 }

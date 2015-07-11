@@ -21,7 +21,7 @@ vdev_raidz_generate_parity_p_avx(raidz_map_t *rm)
             ASSERT(ccount == pcount);
             for (i = 0; i < ccount / 4; i++, src+=4, p+=4) {
                 asm("VMOVDQU %[src], %%ymm0\n"
-                    "VMOVDQU %%ymm0, %[p]"
+                    "VMOVDQU %%ymm0, %[p]\n"
                     : [p] "=m" (*p)
                     : [src] "m" (*src)
                     : "ymm0");
@@ -33,10 +33,10 @@ vdev_raidz_generate_parity_p_avx(raidz_map_t *rm)
         } else {
             ASSERT(ccount <= pcount);
             for (i = 0; i < ccount / 4; i++, src+=4, p+=4) {
-                asm("VMOVDQU %[p], %%ymm0\n"
-                    "VMOVDQU %[src], %%ymm1\n"
-                    "VXORPS %%ymm1, %%ymm0, %%ymm0\n"
-                    "VMOVDQU %%ymm0, %[p]"
+                asm("VMOVDQU %[src], %%ymm0\n"
+                    "VMOVDQU %[p], %%ymm1\n"
+                    "VXORPS %%ymm0, %%ymm1, %%ymm1\n"
+                    "VMOVDQU %%ymm1, %[p]\n"
                     : [p] "+m" (*p)
                     : [src] "m" (*src)
                     : "ymm0", "ymm1");
@@ -89,10 +89,10 @@ vdev_raidz_reconstruct_p_avx(raidz_map_t *rm, int *tgts, int ntgts)
         count = MIN(ccount, xcount);
 
         for (i = 0; i < count / 4; i++, src+=4, dst+=4) {
-            asm("VMOVDQU %[dst], %%ymm0\n"
-                "VMOVDQU %[src], %%ymm1\n"
-                "VXORPS %%ymm1, %%ymm0, %%ymm0\n"
-                "VMOVDQU %%ymm0, %[dst]"
+            asm("VMOVDQU %[src], %%ymm0\n"
+                "VMOVDQU %[dst], %%ymm1\n"
+                "VXORPS %%ymm0, %%ymm1, %%ymm1\n"
+                "VMOVDQU %%ymm1, %[dst]"
                 : [dst] "+m" (*dst)
                 : [src] "m" (*src)
                 : "ymm0", "ymm1");
@@ -159,30 +159,30 @@ vdev_raidz_generate_parity_pq_avx(raidz_map_t *rm)
             * the previous result and adding in the new value.
             */
             for (i = 0; i < ccnt / 4; i++, src+=4, p+=4, q+=4) {
-                asm("VMOVDQU %[p], %%ymm0\n"
-                    "VMOVDQU %[src], %%ymm1\n"
-                    "VMOVDQU %[q], %%ymm2\n"
-                    "VEXTRACTF128 $1, %%ymm2, %%xmm3\n"
-                    "VXORPS %%xmm4, %%xmm4, %%xmm4\n"
-                    "VPCMPGTB %%xmm2, %%xmm4, %%xmm5\n"
-                    "VPCMPGTB %%xmm3, %%xmm4, %%xmm6\n"
+                asm("VMOVDQU %[src], %%ymm0\n"
+                    "VMOVDQU %[p], %%ymm1\n"
+                    "VXORPS %%ymm0, %%ymm1, %%ymm1\n"
+                    "VMOVDQU %%ymm1, %[p]\n"
+                    "VMOVDQU %[q], %%ymm1\n"
+                    "VEXTRACTF128 $1, %%ymm1, %%xmm2\n"
+                    "VXORPS %%xmm3, %%xmm3, %%xmm3\n"
+                    "VPCMPGTB %%xmm1, %%xmm3, %%xmm4\n"
+                    "VPCMPGTB %%xmm2, %%xmm3, %%xmm5\n"
                     "MOVQ $0x1d1d1d1d1d1d1d1d, %%rax\n"
-                    "VPINSRQ $0, %%rax, %%xmm4, %%xmm4\n"
-                    "VPINSRQ $1, %%rax, %%xmm4, %%xmm4\n"
-                    "VPAND %%xmm4, %%xmm5, %%xmm5\n"
-                    "VPAND %%xmm4, %%xmm6, %%xmm6\n"
-                    "VINSERTF128 $1, %%xmm6, %%ymm5, %%ymm5\n"
+                    "VPINSRQ $0, %%rax, %%xmm3, %%xmm3\n"
+                    "VPINSRQ $1, %%rax, %%xmm3, %%xmm3\n"
+                    "VPAND %%xmm3, %%xmm4, %%xmm4\n"
+                    "VPAND %%xmm3, %%xmm5, %%xmm5\n"
+                    "VINSERTF128 $1, %%xmm5, %%ymm4, %%ymm4\n"
+                    "VPADDB %%xmm1, %%xmm1, %%xmm1\n"
                     "VPADDB %%xmm2, %%xmm2, %%xmm2\n"
-                    "VPADDB %%xmm3, %%xmm3, %%xmm3\n"
-                    "VINSERTF128 $1, %%xmm3, %%ymm2, %%ymm2\n"
-                    "VXORPS %%ymm2, %%ymm5, %%ymm2\n"
-                    "VXORPS %%ymm1, %%ymm0, %%ymm0\n"
-                    "VXORPS %%ymm1, %%ymm2, %%ymm2\n"
-                    "VMOVDQU %%ymm0, %[p]\n"
-                    "VMOVDQU %%ymm2, %[q]"
+                    "VINSERTF128 $1, %%xmm2, %%ymm1, %%ymm1\n"
+                    "VXORPS %%ymm1, %%ymm4, %%ymm1\n"
+                    "VXORPS %%ymm0, %%ymm1, %%ymm1\n"
+                    "VMOVDQU %%ymm1, %[q]"
                     : [p] "+m" (*p), [q] "+m" (*q)
                     : [src] "m" (*src)
-                    : "rax", "ymm0", "ymm1", "ymm2", "xmm3", "xmm4", "ymm5", "xmm6");
+                    : "rax", "ymm0", "ymm1", "ymm2", "xmm3", "xmm4", "ymm5");
             }
             int remainder = ccnt % 4;
             for(int j = 0; j < remainder; j++, p++, src++, q++) {
