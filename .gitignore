@@ -10,3 +10,6 @@ test
 gmon.out
 perf.data
 perf.data.old
+
+# Profiler Output
+*svg
