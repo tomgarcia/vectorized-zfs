@@ -1,10 +1,10 @@
+# Executable and Object files
+test
+*.o
+
 # Vi swap files
 *swp
 *swo
-
-# Executable and object files
-test
-*.o
 
 # Profiling Data
 gmon.out
