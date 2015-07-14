@@ -46,9 +46,16 @@ int main(int argc, char **argv)
     parity avx_pq = {"RAID-Z2 AVX",
                        vdev_raidz_generate_parity_pq_avx,
                        vdev_raidz_reconstruct_pq_avx};
+    parity standard_q = {"RAID-Z2 Standard (Q)",
+                       vdev_raidz_generate_parity_pq,
+                       vdev_raidz_reconstruct_q};
+    parity avx_q = {"RAID-Z2 AVX (Q)",
+                       vdev_raidz_generate_parity_pq_avx,
+                       vdev_raidz_reconstruct_q_avx};
 
     parity parities_p[] = {standard, avx};
     parity parities_pq[] = {standard_pq, avx_pq};
+    parity parities_q[] = {standard_q, avx_q};
     time_t start = time(NULL);
     do {
         raidz_map_t *map_p = make_map(num_cols, sizes, VDEV_RAIDZ_P);
@@ -65,6 +72,13 @@ int main(int argc, char **argv)
             parity p = parities_pq[i];
             TEST_PRINT("Testing %s\n", p.name);
             test_parity_pq(p, map_pq);
+            TEST_PRINT("%s works!\n", p.name);
+        }
+        TEST_PRINT("\n");
+        for(int i = 0; i < sizeof(parities_q) / sizeof(parity); i++) {
+            parity p = parities_q[i];
+            TEST_PRINT("Testing %s\n", p.name);
+            test_parity_p(p, map_pq);
             TEST_PRINT("%s works!\n", p.name);
         }
         raidz_map_free(map_p);

@@ -65,4 +65,7 @@ int vdev_raidz_reconstruct_pq(raidz_map_t *rm, int *tgts, int ntgts);
 
 void vdev_raidz_generate_parity_pq_avx(raidz_map_t *rm);
 int vdev_raidz_reconstruct_pq_avx(raidz_map_t *rm, int *tgts, int ntgts);
+
+int vdev_raidz_reconstruct_q(raidz_map_t *rm, int *tgts, int ntgts);
+int vdev_raidz_reconstruct_q_avx(raidz_map_t *rm, int *tgts, int ntgts);
 #endif

@@ -295,3 +295,61 @@ vdev_raidz_reconstruct_pq(raidz_map_t *rm, int *tgts, int ntgts)
 
     return ((1 << VDEV_RAIDZ_P) | (1 << VDEV_RAIDZ_Q));
 }
+
+int
+vdev_raidz_reconstruct_q(raidz_map_t *rm, int *tgts, int ntgts)
+{
+    uint64_t *dst, *src, xcount, ccount, count, mask, i;
+    uint8_t *b;
+    int x = tgts[0];
+    int c, j, exp;
+
+    ASSERT(ntgts == 1);
+
+    xcount = rm->rm_col[x].rc_size / sizeof (src[0]);
+    ASSERT(xcount <= rm->rm_col[VDEV_RAIDZ_Q].rc_size / sizeof (src[0]));
+
+    for (c = rm->rm_firstdatacol; c < rm->rm_cols; c++) {
+        src = rm->rm_col[c].rc_data;
+        dst = rm->rm_col[x].rc_data;
+
+        if (c == x)
+            ccount = 0;
+        else
+            ccount = rm->rm_col[c].rc_size / sizeof (src[0]);
+
+        count = MIN(ccount, xcount);
+
+        if (c == rm->rm_firstdatacol) {
+            for (i = 0; i < count; i++, dst++, src++) {
+                *dst = *src;
+            }
+            for (; i < xcount; i++, dst++) {
+                *dst = 0;
+            }
+
+        } else {
+            for (i = 0; i < count; i++, dst++, src++) {
+                VDEV_RAIDZ_64MUL_2(*dst, mask);
+                *dst ^= *src;
+            }
+
+            for (; i < xcount; i++, dst++) {
+                VDEV_RAIDZ_64MUL_2(*dst, mask);
+            }
+        }
+    }
+
+    src = rm->rm_col[VDEV_RAIDZ_Q].rc_data;
+    dst = rm->rm_col[x].rc_data;
+    exp = 255 - (rm->rm_cols - 1 - x);
+
+    for (i = 0; i < xcount; i++, dst++, src++) {
+        *dst ^= *src;
+        for (j = 0, b = (uint8_t *)dst; j < 8; j++, b++) {
+            *b = vdev_raidz_exp2(*b, exp);
+        }
+    }
+
+    return (1 << VDEV_RAIDZ_Q);
+}
