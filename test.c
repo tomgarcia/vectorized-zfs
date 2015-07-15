@@ -39,6 +39,9 @@ int main(int argc, char **argv)
     parity avx = {"RAID-Z1 AVX",
                   vdev_raidz_generate_parity_p_avx,
                   vdev_raidz_reconstruct_p_avx};
+    parity sse4 = {"RAID-Z1 SSE4",
+                  vdev_raidz_generate_parity_p_sse4,
+                  vdev_raidz_reconstruct_p_sse4};
     parity standard = {"RAID-Z1 Standard",
                        vdev_raidz_generate_parity_p,
                        vdev_raidz_reconstruct_p};
@@ -48,6 +51,9 @@ int main(int argc, char **argv)
     parity avx_pq = {"RAID-Z2 AVX",
                        vdev_raidz_generate_parity_pq_avx,
                        vdev_raidz_reconstruct_pq_avx};
+    parity sse4_pq = {"RAID-Z2 SSE4",
+                       vdev_raidz_generate_parity_pq_sse4,
+                       vdev_raidz_reconstruct_pq_sse4};
     parity standard_q = {"RAID-Z2 Standard (Q)",
                        vdev_raidz_generate_parity_pq,
                        vdev_raidz_reconstruct_q};
@@ -55,8 +61,8 @@ int main(int argc, char **argv)
                        vdev_raidz_generate_parity_pq_avx,
                        vdev_raidz_reconstruct_q_avx};
 
-    parity parities_p[] = {standard, avx};
-    parity parities_pq[] = {standard_pq, avx_pq};
+    parity parities_p[] = {standard, avx, sse4};
+    parity parities_pq[] = {standard_pq, avx_pq, sse4_pq};
     parity parities_q[] = {standard_q, avx_q};
     time_t start = time(NULL);
     do {
