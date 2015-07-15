@@ -106,7 +106,9 @@ int vdev_raidz_reconstruct_pq_sse4(raidz_map_t *rm, int *tgts, int ntgts);
 
 int vdev_raidz_reconstruct_q(raidz_map_t *rm, int *tgts, int ntgts);
 int vdev_raidz_reconstruct_q_avx(raidz_map_t *rm, int *tgts, int ntgts);
+int vdev_raidz_reconstruct_q_sse4(raidz_map_t *rm, int *tgts, int ntgts);
 
 void vdev_raidz_generate_parity_pqr(raidz_map_t *rm);
 void vdev_raidz_generate_parity_pqr_avx(raidz_map_t *rm);
+void vdev_raidz_generate_parity_pqr_sse4(raidz_map_t *rm);
 #endif

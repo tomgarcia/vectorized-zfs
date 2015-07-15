@@ -20,10 +20,12 @@ typedef struct {
     int (*reconstruct)(raidz_map_t *rm, int *tgts, int ntgts);
 } parity;
 
+typedef void (*generate_pqr)(raidz_map_t *rm);
+
 void test_parity_p(parity p, raidz_map_t *map);
 void test_reconstruct_q(parity p, raidz_map_t *map);
 void test_parity_pq(parity p, raidz_map_t *map);
-void test_parity_pqr(raidz_map_t *map);
+void test_parity_pqr(generate_pqr generate, raidz_map_t *map);
 
 int main(int argc, char **argv)
 {
@@ -60,10 +62,13 @@ int main(int argc, char **argv)
     parity avx_q = {"RAID-Z2 AVX (Q)",
                        vdev_raidz_generate_parity_pq_avx,
                        vdev_raidz_reconstruct_q_avx};
+    parity sse4_q = {"RAID-Z2 SSE4 (Q)",
+                       vdev_raidz_generate_parity_pq_sse4,
+                       vdev_raidz_reconstruct_q_sse4};
 
     parity parities_p[] = {standard, avx, sse4};
     parity parities_pq[] = {standard_pq, avx_pq, sse4_pq};
-    parity parities_q[] = {standard_q, avx_q};
+    parity parities_q[] = {standard_q, avx_q, sse4_q};
     time_t start = time(NULL);
     do {
         raidz_map_t *map_p = make_map(num_cols, sizes, VDEV_RAIDZ_P);
@@ -91,9 +96,12 @@ int main(int argc, char **argv)
             TEST_PRINT("%s works!\n", p.name);
         }
         TEST_PRINT("\n");
-        TEST_PRINT("Testing RAIDZ3 Generation\n");
-        test_parity_pqr(map_pqr);
-        TEST_PRINT("RAIDZ3 Generation Works!\n");
+        TEST_PRINT("Testing RAIDZ3 AVX Generation\n");
+        test_parity_pqr(vdev_raidz_generate_parity_pqr_avx, map_pqr);
+        TEST_PRINT("RAIDZ3 AVX Generation Works!\n");
+        TEST_PRINT("Testing RAIDZ3 SSE4 Generation\n");
+        test_parity_pqr(vdev_raidz_generate_parity_pqr_sse4, map_pqr);
+        TEST_PRINT("RAIDZ3 SSE4 Generation Works!\n");
         raidz_map_free(map_p);
         raidz_map_free(map_pq);
         raidz_map_free(map_pqr);
@@ -163,7 +171,7 @@ void test_parity_pq(parity p, raidz_map_t *map)
     }
 }
 
-void test_parity_pqr(raidz_map_t *map)
+void test_parity_pqr(generate_pqr generate, raidz_map_t *map)
 {
     vdev_raidz_generate_parity_pqr(map);
     uint64_t *p = (uint64_t *) map->rm_col[VDEV_RAIDZ_P].rc_data;
@@ -178,7 +186,7 @@ void test_parity_pqr(raidz_map_t *map)
     uint64_t rsize = map->rm_col[VDEV_RAIDZ_R].rc_size;
     uint64_t *rcopy = malloc(rsize);
     memcpy(rcopy, r, rsize);
-    vdev_raidz_generate_parity_pqr_avx(map);
+    generate(map);
     for(int i = 0; i < psize / sizeof(uint64_t); i++) {
         assert(p[i] == pcopy[i]);
     }
