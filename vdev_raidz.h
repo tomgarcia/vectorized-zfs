@@ -45,6 +45,12 @@
             ((mask) & 0x1d1d1d1d1d1d1d1dULL); \
 }
 
+#define VDEV_RAIDZ_64MUL_4(x, mask) \
+{ \
+        VDEV_RAIDZ_64MUL_2((x), mask); \
+        VDEV_RAIDZ_64MUL_2((x), mask); \
+}
+
 typedef struct raidz_col {
     uint64_t rc_devidx;     /* child device index for I/O */
     uint64_t rc_offset;     /* device offset */
@@ -94,4 +100,7 @@ int vdev_raidz_reconstruct_pq_avx(raidz_map_t *rm, int *tgts, int ntgts);
 
 int vdev_raidz_reconstruct_q(raidz_map_t *rm, int *tgts, int ntgts);
 int vdev_raidz_reconstruct_q_avx(raidz_map_t *rm, int *tgts, int ntgts);
+
+void vdev_raidz_generate_parity_pqr(raidz_map_t *rm);
+void vdev_raidz_generate_parity_pqr_avx(raidz_map_t *rm);
 #endif

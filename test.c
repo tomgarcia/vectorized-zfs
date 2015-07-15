@@ -23,6 +23,7 @@ typedef struct {
 void test_parity_p(parity p, raidz_map_t *map);
 void test_reconstruct_q(parity p, raidz_map_t *map);
 void test_parity_pq(parity p, raidz_map_t *map);
+void test_parity_pqr(raidz_map_t *map);
 
 int main(int argc, char **argv)
 {
@@ -61,6 +62,7 @@ int main(int argc, char **argv)
     do {
         raidz_map_t *map_p = make_map(num_cols, sizes, VDEV_RAIDZ_P);
         raidz_map_t *map_pq = make_map(num_cols, sizes, VDEV_RAIDZ_Q);
+        raidz_map_t *map_pqr = make_map(num_cols, sizes, VDEV_RAIDZ_R);
 
         for(int i = 0; i < sizeof(parities_p) / sizeof(parity); i++) {
             parity p = parities_p[i];
@@ -82,9 +84,15 @@ int main(int argc, char **argv)
             test_reconstruct_q(p, map_pq);
             TEST_PRINT("%s works!\n", p.name);
         }
+        TEST_PRINT("\n");
+        TEST_PRINT("Testing RAIDZ3 Generation\n");
+        test_parity_pqr(map_pqr);
+        TEST_PRINT("RAIDZ3 Generation Works!\n");
         raidz_map_free(map_p);
         raidz_map_free(map_pq);
+        raidz_map_free(map_pqr);
     } while (difftime(time(NULL), start) < seconds);
+    free(sizes);
     return 0;
 }
 
@@ -147,4 +155,34 @@ void test_parity_pq(parity p, raidz_map_t *map)
             free(copy2);
         }
     }
+}
+
+void test_parity_pqr(raidz_map_t *map)
+{
+    vdev_raidz_generate_parity_pqr(map);
+    uint64_t *p = (uint64_t *) map->rm_col[VDEV_RAIDZ_P].rc_data;
+    uint64_t psize = map->rm_col[VDEV_RAIDZ_P].rc_size;
+    uint64_t *pcopy = malloc(psize);
+    memcpy(pcopy, p, psize);
+    uint64_t *q = (uint64_t *) map->rm_col[VDEV_RAIDZ_Q].rc_data;
+    uint64_t qsize = map->rm_col[VDEV_RAIDZ_Q].rc_size;
+    uint64_t *qcopy = malloc(qsize);
+    memcpy(qcopy, q, qsize);
+    uint64_t *r = (uint64_t *) map->rm_col[VDEV_RAIDZ_R].rc_data;
+    uint64_t rsize = map->rm_col[VDEV_RAIDZ_R].rc_size;
+    uint64_t *rcopy = malloc(rsize);
+    memcpy(rcopy, r, rsize);
+    vdev_raidz_generate_parity_pqr_avx(map);
+    for(int i = 0; i < psize / sizeof(uint64_t); i++) {
+        assert(p[i] == pcopy[i]);
+    }
+    for(int i = 0; i < rsize / sizeof(uint64_t); i++) {
+        assert(r[i] == rcopy[i]);
+    }
+    for(int i = 0; i < qsize / sizeof(uint64_t); i++) {
+        assert(q[i] == qcopy[i]);
+    }
+    free(pcopy);
+    free(qcopy);
+    free(rcopy);
 }
