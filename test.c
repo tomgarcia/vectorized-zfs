@@ -21,6 +21,7 @@ typedef struct {
 } parity;
 
 void test_parity_p(parity p, raidz_map_t *map);
+void test_reconstruct_q(parity p, raidz_map_t *map);
 void test_parity_pq(parity p, raidz_map_t *map);
 
 int main(int argc, char **argv)
@@ -78,7 +79,7 @@ int main(int argc, char **argv)
         for(int i = 0; i < sizeof(parities_q) / sizeof(parity); i++) {
             parity p = parities_q[i];
             TEST_PRINT("Testing %s\n", p.name);
-            test_parity_p(p, map_pq);
+            test_reconstruct_q(p, map_pq);
             TEST_PRINT("%s works!\n", p.name);
         }
         raidz_map_free(map_p);
@@ -88,6 +89,23 @@ int main(int argc, char **argv)
 }
 
 void test_parity_p(parity p, raidz_map_t *map)
+{
+    p.generate(map);
+    for(int i = map->rm_firstdatacol; i < map->rm_cols; i++) {
+        raidz_col_t col = map->rm_col[i];
+        uint64_t *copy = malloc(col.rc_size);
+        memcpy(copy, col.rc_data, col.rc_size);
+        memset(col.rc_data, 0, col.rc_size);
+        int targets[] = {i};
+        p.reconstruct(map, targets, 1);
+        for(int j = 0; j < col.rc_size / sizeof(uint64_t); j++) {
+            assert(copy[j] == ((uint64_t*)col.rc_data)[j]);
+        }
+        free(copy);
+    }
+}
+
+void test_reconstruct_q(parity p, raidz_map_t *map)
 {
     p.generate(map);
     for(int i = map->rm_firstdatacol; i < map->rm_cols; i++) {
